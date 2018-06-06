@@ -1,0 +1,18 @@
+.notification {
+  display: flex;
+  margin-bottom: 9px;
+  flex-wrap: wrap;
+}
+
+.notification__author {
+  margin-right: 5px;
+  font-weight: bold;
+}
+
+.notification__date {
+  color: #999;
+}
+
+.notification__message {
+  width: 100%;
+}

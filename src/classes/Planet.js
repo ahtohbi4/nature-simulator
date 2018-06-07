@@ -1,13 +1,13 @@
 import Tiger from './Tiger';
 import calculateDistance from '../utils/calculateDistance';
 
-const DAY_DURATION = 3000; // @units ms
-const DAY_OF_APOCALYPSE = 100;
+const DAY_DURATION = 500; // @units ms
+const DAY_OF_APOCALYPSE = 50;
 
 const START_POPULATION = [
   {
     Animal: Tiger,
-    count: 10,
+    count: 1,
   },
 ];
 

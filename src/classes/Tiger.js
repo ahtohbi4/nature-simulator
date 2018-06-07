@@ -1,7 +1,7 @@
 import Animal from './Animal';
 import Habitat from './Habitat';
 
-const LIFETIME_AVERAGE = 50;
+const LIFETIME_AVERAGE = 100;
 const SPEED_AVERAGE = 10;
 const VIEW_RADIUS_AVERAGE = 40;
 

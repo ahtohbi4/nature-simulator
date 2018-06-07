@@ -1,5 +1,7 @@
 import generate from 'nanoid/generate';
 
+import WindRose from './WindRose';
+
 import randomFloatAroundValue from '../utils/randomFloatAroundValue';
 import randomFloatInRange from '../utils/randomFloatInRange';
 import randomIntegerInRange from '../utils/randomIntegerInRange';
@@ -43,8 +45,8 @@ export default class Animal {
       this.direction = direction;
       this.position = position;
     } else {
-      // Направление движения. Значение от -180 до 180 градусов относительно оси X.
-      this.direction = Animal.generateDirection();
+      // Direction will be generated at first step.
+      this.direction = null;
       // Положение особи в его среде обитания { x: <...>, y: <...> }.
       this.position = {
         x: randomIntegerInRange(this.habitat.x0, this.habitat.x1),
@@ -97,21 +99,6 @@ export default class Animal {
     return this.constructor.name.toLowerCase();
   }
 
-  get vizibleWalls() {
-    const {
-      habitat: { x0, x1, y0, y1 },
-      position: { x, y },
-      viewRadius,
-    } = this;
-
-    return [
-      ...(((y - viewRadius) <= y0) ? ['top'] : []),
-      ...(((x + viewRadius) >= x1) ? ['right'] : []),
-      ...(((y + viewRadius) >= y1) ? ['bottom'] : []),
-      ...(((x - viewRadius) <= x0) ? ['left'] : []),
-    ];
-  }
-
   makeStep(params) {
     const { day, distances } = params;
     const age = day - this.dayOfBirth;
@@ -132,14 +119,43 @@ export default class Animal {
   }
 
   lookAround(distances) {
-    console.log(this.vizibleWalls)
+    this.recalculateDirection();
+  }
+
+  recalculateDirection() {
+    const {
+      habitat: { x0, x1, y0, y1 },
+      position: { x, y },
+      viewRadius,
+    } = this;
+    const availableDirections = new WindRose();
+
+    if ((y - viewRadius) <= y0) {
+      availableDirections.subtract(['n', 'ne', 'nw']);
+    }
+
+    if ((x + viewRadius) >= x1) {
+      availableDirections.subtract(['ne', 'e', 'se']);
+    }
+
+    if ((y + viewRadius) >= y1) {
+      availableDirections.subtract(['se', 's', 'sw']);
+    }
+
+    if ((x - viewRadius) <= x0) {
+      availableDirections.subtract(['sw', 'w', 'nw']);
+    }
+
+    if (this.direction === null || (availableDirections.isModified && !availableDirections.checkDirection(this.direction))) {
+      this.direction = availableDirections.randomDirection;
+    }
   }
 
   move() {
     const { direction, position: { x, y }, speed } = this;
 
-    const nextX = x + speed * Math.sin(direction);
-    const nextY = y + speed * Math.cos(direction);
+    const nextX = x + speed * Math.cos(direction);
+    const nextY = y - speed * Math.sin(direction);
 
     this.position = {
       x: nextX,
@@ -177,10 +193,6 @@ export default class Animal {
     canvas.fillText(`${this.name} (${this.gender})`, x + 2, y - 9);
   }
 }
-
-Animal.generateDirection = (from = -180, to = 180) => (
-  (randomFloatInRange(from, to) * Math.PI) / 180
-);
 
 Animal.DEATH_REASON_ILLNESS = 'illness';
 Animal.DEATH_REASON_KILLING = 'killing';

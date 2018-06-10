@@ -1,26 +1,27 @@
-import generate from 'nanoid/generate';
+import generate from "nanoid/generate";
 
-import WindRose from './WindRose';
+import WindRose from "./WindRose";
 
-import randomFloatAroundValue from '../utils/randomFloatAroundValue';
-import randomFloatInRange from '../utils/randomFloatInRange';
-import randomIntegerInRange from '../utils/randomIntegerInRange';
-import randomItemFromList from '../utils/randomItemFromList';
+import randomFloatAroundValue from "../utils/randomFloatAroundValue";
+import randomIntegerInRange from "../utils/randomIntegerInRange";
+import randomIntegerAroundValue from "../utils/randomIntegerAroundValue";
+import randomItemFromList from "../utils/randomItemFromList";
 
 const VIEW_RADIUS_DEFAULT = 30;
 
 export default class Animal {
   constructor(params, options = {}) {
     const {
-      color = '#000',
+      color = "#000",
       dayOfBirth,
       habitat,
       lifetime,
       parents = null,
+      reproductiveAge: [reproductiveAgeFrom, reproductiveAgeTo],
       speed,
       viewRadius = VIEW_RADIUS_DEFAULT,
 
-      pushMessage,
+      pushMessage
     } = params;
 
     // Окраска вида.
@@ -33,6 +34,11 @@ export default class Animal {
     this.health = 100;
     // Уровень голода. Значение в процентах от 0 до 100.
     this.hunger = 0;
+    //
+    this.reproductiveAge = [
+      randomIntegerAroundValue(reproductiveAgeFrom),
+      randomIntegerAroundValue(reproductiveAgeTo)
+    ];
 
     // Ссылки на объекты родителей { father: <...>, mother: <...> }.
     this.parents = parents;
@@ -50,24 +56,28 @@ export default class Animal {
       // Положение особи в его среде обитания { x: <...>, y: <...> }.
       this.position = {
         x: randomIntegerInRange(this.habitat.x0, this.habitat.x1),
-        y: randomIntegerInRange(this.habitat.y0, this.habitat.y1),
+        y: randomIntegerInRange(this.habitat.y0, this.habitat.y1)
       };
     }
 
     // Кличка особи.
-    this.name = generate('abcdefghijklmnopqrstuvwxyz', 5)
-      .replace(/^\w/g, (char) => char.toUpperCase());
+    this.name = generate("abcdefghijklmnopqrstuvwxyz", 5).replace(
+      /^\w/g,
+      char => char.toUpperCase()
+    );
 
     // Пол особи.
     this.gender = randomItemFromList([
       Animal.GENDER_FEMALE,
-      Animal.GENDER_MALE,
+      Animal.GENDER_MALE
     ]);
     // Продолжительность жизни в днях.
     this.lifetime = randomFloatAroundValue(lifetime);
 
     if (speed > viewRadius) {
-      throw new Error('The value of the parameter "viewRadius" must be greater than the value of the parameter "speed".');
+      throw new Error(
+        'The value of the parameter "viewRadius" must be greater than the value of the parameter "speed".'
+      );
     }
 
     // Скорость передвижения.
@@ -75,24 +85,26 @@ export default class Animal {
     // Радиус обзора - расстояние, на котором особь может увидеть других особей.
     this.viewRadius = randomFloatAroundValue(viewRadius);
 
-    this.say = (message) => pushMessage({
-      author: this.name,
-      message,
-    });
+    this.say = message =>
+      pushMessage({
+        author: this.name,
+        message
+      });
 
-    const {
-      onBurn = () => null,
-      onDie = () => null,
-    } = options;
+    const { onBurn = () => null, onDie = () => null } = options;
     this.onBurn = onBurn;
     this.onDie = onDie;
 
     this.onBurn(this);
-    this.say(`Hi everyone! I am a ${this.type} <strong>${this.name}</strong>. Today I was born.`);
+    this.say(
+      `Hi everyone! I am a ${this.type} <strong>${
+        this.name
+      }</strong>. Today I was born.`
+    );
   }
 
   get isAlive() {
-    return (this.health > 10);
+    return this.health > 10;
   }
 
   get type() {
@@ -107,7 +119,7 @@ export default class Animal {
       if (this.isAlive) {
         this.die({
           day,
-          reason: Animal.DEATH_REASON_OLDNESS,
+          reason: Animal.DEATH_REASON_OLDNESS
         });
       }
 
@@ -132,27 +144,31 @@ export default class Animal {
     const {
       habitat: { x0, x1, y0, y1 },
       position: { x, y },
-      viewRadius,
+      viewRadius
     } = this;
     const availableDirections = new WindRose();
 
-    if ((y - viewRadius) <= y0) {
-      availableDirections.subtract(['n', 'ne', 'nw']);
+    if (y - viewRadius <= y0) {
+      availableDirections.subtract(["n", "ne", "nw"]);
     }
 
-    if ((x + viewRadius) >= x1) {
-      availableDirections.subtract(['ne', 'e', 'se']);
+    if (x + viewRadius >= x1) {
+      availableDirections.subtract(["ne", "e", "se"]);
     }
 
-    if ((y + viewRadius) >= y1) {
-      availableDirections.subtract(['se', 's', 'sw']);
+    if (y + viewRadius >= y1) {
+      availableDirections.subtract(["se", "s", "sw"]);
     }
 
-    if ((x - viewRadius) <= x0) {
-      availableDirections.subtract(['sw', 'w', 'nw']);
+    if (x - viewRadius <= x0) {
+      availableDirections.subtract(["sw", "w", "nw"]);
     }
 
-    if (this.direction === null || (availableDirections.isModified && !availableDirections.checkDirection(this.direction))) {
+    if (
+      this.direction === null ||
+      (availableDirections.isModified &&
+        !availableDirections.checkDirection(this.direction))
+    ) {
       this.direction = availableDirections.randomDirection;
     }
   }
@@ -165,7 +181,7 @@ export default class Animal {
 
     this.position = {
       x: nextX,
-      y: nextY,
+      y: nextY
     };
   }
 
@@ -176,7 +192,7 @@ export default class Animal {
     this.dayOfDeath = day;
     this.deathReason = reason;
 
-    this.say('I see a light... Goodbye... my friends...');
+    this.say("I see a light... Goodbye... my friends...");
     this.onDie(this);
   }
 
@@ -190,19 +206,19 @@ export default class Animal {
 
     if (this.isAlive) {
       canvas.arc(x, y, this.viewRadius, 0, Math.PI * 2, true);
-      canvas.fillStyle = 'rgba(139, 195, 74, .2)';
+      canvas.fillStyle = "rgba(139, 195, 74, .2)";
       canvas.fill();
     }
 
-    canvas.font = '300 10px/18px Arial';
+    canvas.font = "300 10px/18px Arial";
     canvas.fillStyle = this.color;
     canvas.fillText(`${this.name} (${this.gender})`, x + 2, y - 9);
   }
 }
 
-Animal.DEATH_REASON_ILLNESS = 'illness';
-Animal.DEATH_REASON_KILLING = 'killing';
-Animal.DEATH_REASON_OLDNESS = 'oldness';
+Animal.DEATH_REASON_ILLNESS = "illness";
+Animal.DEATH_REASON_KILLING = "killing";
+Animal.DEATH_REASON_OLDNESS = "oldness";
 
-Animal.GENDER_FEMALE = 'female';
-Animal.GENDER_MALE = 'male';
+Animal.GENDER_FEMALE = "female";
+Animal.GENDER_MALE = "male";

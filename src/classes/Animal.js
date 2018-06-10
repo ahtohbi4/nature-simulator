@@ -7,6 +7,7 @@ import randomIntegerInRange from "../utils/randomIntegerInRange";
 import randomIntegerAroundValue from "../utils/randomIntegerAroundValue";
 import randomItemFromList from "../utils/randomItemFromList";
 
+const ACTION_RADIUS_DEFAULT = 5;
 const VIEW_RADIUS_DEFAULT = 30;
 
 export default class Animal {
@@ -19,6 +20,8 @@ export default class Animal {
       parents = null,
       reproductiveAge: [reproductiveAgeFrom, reproductiveAgeTo],
       speed,
+
+      actionRadius = ACTION_RADIUS_DEFAULT,
       viewRadius = VIEW_RADIUS_DEFAULT,
 
       pushMessage
@@ -34,7 +37,7 @@ export default class Animal {
     this.health = 100;
     // Уровень голода. Значение в процентах от 0 до 100.
     this.hunger = 0;
-    //
+    // Рапродуктивный возраст [<от>, <до>].
     this.reproductiveAge = [
       randomIntegerAroundValue(reproductiveAgeFrom),
       randomIntegerAroundValue(reproductiveAgeTo)
@@ -61,7 +64,7 @@ export default class Animal {
     }
 
     // Кличка особи.
-    this.name = generate("abcdefghijklmnopqrstuvwxyz", 5).replace(
+    this.name = generate('abcdefghijklmnopqrstuvwxyz', 5).replace(
       /^\w/g,
       char => char.toUpperCase()
     );
@@ -75,13 +78,13 @@ export default class Animal {
     this.lifetime = randomFloatAroundValue(lifetime);
 
     if (speed > viewRadius) {
-      throw new Error(
-        'The value of the parameter "viewRadius" must be greater than the value of the parameter "speed".'
-      );
+      throw new Error('The value of the parameter "viewRadius" must be greater than the value of the parameter "speed".');
     }
 
     // Скорость передвижения.
     this.speed = randomFloatAroundValue(speed);
+    // Радиус действия - расстояние, на котором особь может взаимодействовать с другими особями.
+    this.actionRadius = randomFloatAroundValue(actionRadius);
     // Радиус обзора - расстояние, на котором особь может увидеть других особей.
     this.viewRadius = randomFloatAroundValue(viewRadius);
 
@@ -96,11 +99,7 @@ export default class Animal {
     this.onDie = onDie;
 
     this.onBurn(this);
-    this.say(
-      `Hi everyone! I am a ${this.type} <strong>${
-        this.name
-      }</strong>. Today I was born.`
-    );
+    this.say(`Hi everyone! I am a ${this.type} <strong>${this.name}</strong>. Today I was born.`);
   }
 
   get isAlive() {
@@ -134,7 +133,7 @@ export default class Animal {
     this.recalculateDirection();
 
     distances.forEach(({ distance, target }) => {
-      if (distance <= this.viewRadius) {
+      if (distance <= this.viewRadius && this.gender !== target.gender) {
         this.say(`Hi, ${target.type} ${target.name}! I see you.`);
       }
     });
@@ -149,26 +148,34 @@ export default class Animal {
     const availableDirections = new WindRose();
 
     if (y - viewRadius <= y0) {
-      availableDirections.subtract(["n", "ne", "nw"]);
+      availableDirections.subtract(['n', 'ne', 'nw']);
     }
 
     if (x + viewRadius >= x1) {
-      availableDirections.subtract(["ne", "e", "se"]);
+      availableDirections.subtract(['ne', 'e', 'se']);
     }
 
     if (y + viewRadius >= y1) {
-      availableDirections.subtract(["se", "s", "sw"]);
+      availableDirections.subtract(['se', 's', 'sw']);
     }
 
     if (x - viewRadius <= x0) {
-      availableDirections.subtract(["sw", "w", "nw"]);
+      availableDirections.subtract(['sw', 'w', 'nw']);
     }
 
-    if (
-      this.direction === null ||
-      (availableDirections.isModified &&
-        !availableDirections.checkDirection(this.direction))
-    ) {
+    const shouldRecalculate = (() => {
+      if (this.direction === null) {
+        return true;
+      }
+
+      if (availableDirections.isModified && !availableDirections.checkDirection(this.direction)) {
+        return true;
+      }
+
+      return false;
+    })();
+
+    if (shouldRecalculate) {
       this.direction = availableDirections.randomDirection;
     }
   }
@@ -192,33 +199,39 @@ export default class Animal {
     this.dayOfDeath = day;
     this.deathReason = reason;
 
-    this.say("I see a light... Goodbye... my friends...");
+    this.say('I see a light... Goodbye... my friends...');
     this.onDie(this);
   }
 
   render(canvas) {
     const { position: { x, y } } = this;
 
-    canvas.beginPath();
-    canvas.arc(x, y, 3, 0, Math.PI * 2, true);
-    canvas.fillStyle = this.color;
-    canvas.fill();
-
     if (this.isAlive) {
+      canvas.beginPath();
+      canvas.arc(x, y, this.actionRadius, 0, Math.PI * 2, true);
+      canvas.fillStyle = 'rgba(139, 195, 74, .7)';
+      canvas.fill();
+
+      canvas.beginPath();
       canvas.arc(x, y, this.viewRadius, 0, Math.PI * 2, true);
-      canvas.fillStyle = "rgba(139, 195, 74, .2)";
+      canvas.fillStyle = 'rgba(139, 195, 74, .2)';
       canvas.fill();
     }
 
-    canvas.font = "300 10px/18px Arial";
+    canvas.beginPath();
+    canvas.arc(x, y, 2, 0, Math.PI * 2, true);
+    canvas.fillStyle = this.color;
+    canvas.fill();
+
+    canvas.font = '300 10px/18px Arial';
     canvas.fillStyle = this.color;
     canvas.fillText(`${this.name} (${this.gender})`, x + 2, y - 9);
   }
 }
 
-Animal.DEATH_REASON_ILLNESS = "illness";
-Animal.DEATH_REASON_KILLING = "killing";
-Animal.DEATH_REASON_OLDNESS = "oldness";
+Animal.DEATH_REASON_ILLNESS = 'illness';
+Animal.DEATH_REASON_KILLING = 'killing';
+Animal.DEATH_REASON_OLDNESS = 'oldness';
 
-Animal.GENDER_FEMALE = "female";
-Animal.GENDER_MALE = "male";
+Animal.GENDER_FEMALE = 'female';
+Animal.GENDER_MALE = 'male';

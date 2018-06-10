@@ -120,6 +120,12 @@ export default class Animal {
 
   lookAround(distances) {
     this.recalculateDirection();
+
+    distances.forEach(({ distance, target }) => {
+      if (distance <= this.viewRadius) {
+        this.say(`Hi, ${target.type} ${target.name}! I see you.`);
+      }
+    });
   }
 
   recalculateDirection() {

@@ -2,12 +2,12 @@ import Tiger from './Tiger';
 import calculateDistance from '../utils/calculateDistance';
 
 const DAY_DURATION = 500; // @units ms
-const DAY_OF_APOCALYPSE = 50;
+const DAY_OF_APOCALYPSE = 100;
 
 const START_POPULATION = [
   {
     Animal: Tiger,
-    count: 1,
+    count: 2,
   },
 ];
 
@@ -50,9 +50,13 @@ export default class Planet {
    * @examples
    *
    * {
-   *   <name>: {
-   *     <name>: <number>
-   *   },
+   *   <name>: [
+   *     {
+   *       distance: <number>,
+   *       target: <Animal>,
+   *     },
+   *     <...>
+   *   ],
    * }
    */
   get distances() {
@@ -65,12 +69,18 @@ export default class Planet {
         const { name: nName, position: nPosition } = neighbor;
         const distance = calculateDistance(position, nPosition);
 
-        result[name] = Object.assign(result[name] || {}, {
-          [nName]: distance,
-        });
-        result[nName] = Object.assign(result[nName] || {}, {
-          [name]: distance,
-        });
+        result[name] = Array.prototype.concat(result[name] || [], [
+          {
+            distance,
+            target: neighbor,
+          },
+        ]);
+        result[nName] = Array.prototype.concat(result[nName] || [], [
+          {
+            distance,
+            target: animal,
+          },
+        ]);
       });
     });
 
@@ -124,7 +134,7 @@ export default class Planet {
 
     this.animals.forEach(animal => animal.makeStep({
       day: this.day,
-      distances: this.distances,
+      distances: this.distances[animal.name],
     }));
 
     this.render();

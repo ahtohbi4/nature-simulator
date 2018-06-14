@@ -1,13 +1,14 @@
+import NotificationManager from './NotificationManager';
 import Tiger from './Tiger';
 import calculateDistance from '../utils/calculateDistance';
 
-const DAY_DURATION = 500; // @units ms
-const DAY_OF_APOCALYPSE = 100;
+const DAY_DURATION = 150; // @units ms
+const DAY_OF_APOCALYPSE = 1000;
 
 const START_POPULATION = [
   {
     Animal: Tiger,
-    count: 2,
+    count: 6,
   },
 ];
 
@@ -15,11 +16,11 @@ export default class Planet {
   constructor(params) {
     const {
       container,
+      notificationsContainer,
+
       name,
       width,
       height,
-
-      notifications,
     } = params;
     this.container = container;
   
@@ -37,11 +38,18 @@ export default class Planet {
     this.name = name;
 
     this.animals = [];
-    this.day = 0;
 
-    this.pushMessage = (params) => notifications.push(Object.assign(params, {
-      day: this.day,
-    }));
+    // Объект окружения. Хранит такие параметры планеты, которые должны быть доступны во внутренних объектах.
+    this.environment = {
+      // Текущий день.
+      day: 0,
+    };
+
+    this.notifications = new NotificationManager({
+      container: notificationsContainer,
+    }, {
+      environment: this.environment,
+    });
 
     this.makeStep = this.makeStep.bind(this);
   }
@@ -87,10 +95,12 @@ export default class Planet {
     return result;
   }
 
+  notify(message) {
+    this.notifications.push({ message });
+  }
+
   start() {
-    this.pushMessage({
-      message: 'Well... We are starting!',
-    })
+    this.notify('Well... We are starting!');
 
     this.populate();
 
@@ -103,14 +113,15 @@ export default class Planet {
         ...result,
         ...Array.apply(null, Array(count)).map(
           () =>
-            new Animal({
-              dayOfBirth: this.day,
-              pushMessage: this.pushMessage,
-            }, {
+            new Animal({}, {
+              environment: this.environment,
+              notifications: this.notifications,
+
+              onChildbirth: (child) => {
+                this.animals.push(child);
+              },
               onDie: ({ name, type }) => {
-                this.pushMessage({
-                  message: `The ${type} <strong>${name}</strong> has died.`,
-                });
+                this.notify(`The ${type} <strong>${name}</strong> has died.`);
               },
             }),
         ),
@@ -118,27 +129,24 @@ export default class Planet {
       [],
     );
 
-    this.pushMessage({
-      message: `Planet <strong>${this.name}</strong> was populated...`,
-    })
+    this.notify(`Planet <strong>${this.name}</strong> was populated...`);
 
     this.render();
   }
 
   makeStep() {
-    if (this.day === DAY_OF_APOCALYPSE) {
+    if (this.environment.day === DAY_OF_APOCALYPSE) {
       clearInterval(this.iterator);
 
       return this;
     }
 
     this.animals.forEach(animal => animal.makeStep({
-      day: this.day,
       distances: this.distances[animal.name],
     }));
 
     this.render();
-    this.day += 1;
+    this.environment.day += 1;
   }
 
   render() {
@@ -149,6 +157,6 @@ export default class Planet {
 
     this.canvas.fillStyle = '#345';
     this.canvas.font = '300 14px/18px Arial';
-    this.canvas.fillText(`Day ${this.day}`, 5, 18);
+    this.canvas.fillText(`Day ${this.environment.day}`, 5, 18);
   }
 }

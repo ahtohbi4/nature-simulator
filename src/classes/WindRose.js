@@ -6,11 +6,11 @@ export default class WindRose {
     this.directions = {
       n: {
         name: 'North',
-        sector: 90,
+        sector: -90,
       },
       ne: {
         name: 'North-East',
-        sector: [0, 90],
+        sector: [0, -90],
       },
       e: {
         name: 'East',
@@ -18,34 +18,44 @@ export default class WindRose {
       },
       se: {
         name: 'South-East',
-        sector: [0, -90],
+        sector: [0, 90],
       },
       s: {
         name: 'South',
-        sector: -90,
+        sector: 90,
       },
       sw: {
         name: 'South-West',
-        sector: [-180, -90],
+        sector: [180, 90],
       },
       w: {
         name: 'West',
-        sector: -180,
+        sector: 180,
       },
       nw: {
         name: 'North-West',
-        sector: [90, 180],
+        sector: [-90, -180],
       },
     };
 
     this.isModified = false;
   }
 
+  /**
+   * Gets all available sectors.
+   *
+   * @returns {Array<Array<number>|number>}
+   */
   get sectors() {
     return Object.keys(this.directions)
       .map((alias) => this.directions[alias].sector);
   }
 
+  /**
+   * Gets from all available sectors range ones (is array).
+   *
+   * @returns {Array<number>}
+   */
   get rangeSectors() {
     return this.sectors
       .filter((sector) => Array.isArray(sector));

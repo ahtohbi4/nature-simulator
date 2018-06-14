@@ -7,49 +7,41 @@ import randomIntegerInRange from "../utils/randomIntegerInRange";
 import randomIntegerAroundValue from "../utils/randomIntegerAroundValue";
 import randomItemFromList from "../utils/randomItemFromList";
 
-const ACTION_RADIUS_DEFAULT = 5;
+const ACTION_RADIUS_DEFAULT = 10;
 const VIEW_RADIUS_DEFAULT = 30;
 
 export default class Animal {
   constructor(params, options = {}) {
     const {
-      color = "#000",
-      dayOfBirth,
+      color = '#000',
       habitat,
       lifetime,
-      parents = null,
+      parents = {},
       reproductiveAge: [reproductiveAgeFrom, reproductiveAgeTo],
       speed,
 
       actionRadius = ACTION_RADIUS_DEFAULT,
       viewRadius = VIEW_RADIUS_DEFAULT,
-
-      pushMessage
     } = params;
 
     // Окраска вида.
     this.color = color;
-    // День рождения.
-    this.dayOfBirth = dayOfBirth;
-    // День смерти или гибели.
-    this.dayOfDeath = null;
+    // Эмоция особи.
+    this.emotion = Animal.EMOTION_NORMAL;
     // Уровень здоровьяю. Значение в процентах от 0 до 100.
     this.health = 100;
     // Уровень голода. Значение в процентах от 0 до 100.
     this.hunger = 0;
-    // Рапродуктивный возраст [<от>, <до>].
-    this.reproductiveAge = [
-      randomIntegerAroundValue(reproductiveAgeFrom),
-      randomIntegerAroundValue(reproductiveAgeTo)
-    ];
 
     // Ссылки на объекты родителей { father: <...>, mother: <...> }.
     this.parents = parents;
     // Среда обитания - прямоугольник.
     this.habitat = habitat;
 
-    if (this.parents !== null) {
-      const { mother: { direction, position } } = this.parents;
+    const { mother } = this.parents;
+
+    if (mother) {
+      const { direction, position } = mother;
 
       this.direction = direction;
       this.position = position;
@@ -88,36 +80,137 @@ export default class Animal {
     // Радиус обзора - расстояние, на котором особь может увидеть других особей.
     this.viewRadius = randomFloatAroundValue(viewRadius);
 
-    this.say = message =>
-      pushMessage({
-        author: this.name,
-        message
-      });
+    // Рапродуктивный возраст [<от>, <до>].
+    this.reproductiveAge = [
+      randomIntegerAroundValue(reproductiveAgeFrom),
+      randomIntegerAroundValue(reproductiveAgeTo)
+    ];
+    // Период восстановления особи перед следующим пометом.
+    this.postnatalPeriodDuration = 10 * (this.viewRadius / this.speed);
+    // День последнего помета.
+    this.dayOfLastChildbirth = undefined;
 
-    const { onBurn = () => null, onDie = () => null } = options;
+    const {
+      environment,
+      notifications,
+
+      onBurn = () => null,
+      onDie = () => null,
+      onChildbirth = () => null,
+    } = options;
+
+    this.environment = environment;
+    this.notifications = notifications;
+
+    // День рождения.
+    this.dayOfBirth = this.environment.day;
+    // День смерти или гибели.
+    this.dayOfDeath = null;
+
     this.onBurn = onBurn;
+    this.onChildbirth = onChildbirth;
     this.onDie = onDie;
 
     this.onBurn(this);
-    this.say(`Hi everyone! I am a ${this.type} <strong>${this.name}</strong>. Today I was born.`);
+    this.say(`Hi everyone! I am a ${this.fullName}. Today I was born.`);
+  }
+
+  get age() {
+    const { dayOfBirth, environment: { day } } = this;
+
+    return (day - dayOfBirth);
   }
 
   get isAlive() {
     return this.health > 10;
   }
 
+  get isReadyToReproduction() {
+    const {
+      age,
+      dayOfLastChildbirth,
+      emotion,
+      environment: { day },
+      gender,
+      postnatalPeriodDuration,
+      reproductiveAge: [
+        reproductiveAgeFrom,
+        reproductiveAgeTo,
+      ],
+    } = this;
+
+    return (
+      age >= reproductiveAgeFrom && age <= reproductiveAgeTo &&
+      emotion !== Animal.EMOTION_SCARED &&
+      (
+        (
+          gender === Animal.GENDER_FEMALE &&
+          (
+            dayOfLastChildbirth === undefined ||
+            (day - dayOfLastChildbirth) >= postnatalPeriodDuration
+          )
+        ) ||
+        gender === Animal.GENDER_MALE
+      )
+    );
+  }
+
   get type() {
     return this.constructor.name.toLowerCase();
   }
 
-  makeStep(params) {
-    const { day, distances } = params;
-    const age = day - this.dayOfBirth;
+  get fullName() {
+    return `${this.type} ${this.name}`;
+  }
 
-    if (age >= this.lifetime) {
+  checkСompatibility(partner) {
+    const {
+      gender,
+      isReadyToReproduction,
+      parents: {
+        father,
+        mother,
+      },
+    } = partner;
+
+    return (
+      this.gender !== gender &&
+      this.isReadyToReproduction &&
+      isReadyToReproduction &&
+      this !== father && this !== mother &&
+      this.parents.father !== partner && this.parents.mother !== partner
+    );
+  }
+
+  // Роды.
+  giveBirth(father) {
+    this.dayOfLastChildbirth = this.environment.day;
+
+    return new this.constructor({
+      parents: {
+        father,
+        mother: this,
+      },
+    }, {
+      environment: this.environment,
+      notifications: this.notifications,
+
+      onChildbirth: this.onChildbirth,
+      onDie: this.onDie,
+    });
+  }
+
+  say(message) {
+    this.notifications.push({
+      author: this.fullName,
+      message,
+    });
+  }
+
+  makeStep(params) {
+    if (this.age >= this.lifetime) {
       if (this.isAlive) {
         this.die({
-          day,
           reason: Animal.DEATH_REASON_OLDNESS
         });
       }
@@ -125,21 +218,42 @@ export default class Animal {
       return;
     }
 
-    this.lookAround(distances);
+    this.lookAround(params);
     this.move();
   }
 
-  lookAround(distances) {
-    this.recalculateDirection();
+  lookAround(params) {
+    const { distances } = params;
 
     distances.forEach(({ distance, target }) => {
-      if (distance <= this.viewRadius && this.gender !== target.gender) {
-        this.say(`Hi, ${target.type} ${target.name}! I see you.`);
+      if (distance <= this.viewRadius && this.checkСompatibility(target)) {
+        if (distance <= this.actionRadius && distance <= target.actionRadius) {
+          // Обе особи в радиусах действия друг-друга.
+          if (this.gender === Animal.GENDER_FEMALE) {
+            // Особь женского пола приносит потомство.
+            this.onChildbirth(this.giveBirth(target));
+            // Особь мужского пола идет по своим делам.
+            target.recalculateDirection({ isForced: true });
+          }
+        } else {
+          this.directTo(target);
+        } 
+      } else {
+        // Особь бежит дальше, смотря, чтобы не выбежать за границы своей среды обитания.
+        this.recalculateDirection();
       }
     });
   }
 
-  recalculateDirection() {
+  directTo(target) {
+    const { position: { x, y } } = this;
+    const { position: { x: xt, y: yt } } = target;
+
+    this.direction = Math.atan2(yt - y, xt - x);
+  }
+
+  recalculateDirection(params = {}) {
+    const { isForced = false } = params;
     const {
       habitat: { x0, x1, y0, y1 },
       position: { x, y },
@@ -164,6 +278,10 @@ export default class Animal {
     }
 
     const shouldRecalculate = (() => {
+      if (isForced) {
+        return true;
+      }
+
       if (this.direction === null) {
         return true;
       }
@@ -184,7 +302,7 @@ export default class Animal {
     const { direction, position: { x, y }, speed } = this;
 
     const nextX = x + speed * Math.cos(direction);
-    const nextY = y - speed * Math.sin(direction);
+    const nextY = y + speed * Math.sin(direction);
 
     this.position = {
       x: nextX,
@@ -193,10 +311,10 @@ export default class Animal {
   }
 
   die(params) {
-    const { day, reason } = params;
+    const { reason } = params;
 
     this.health = 0;
-    this.dayOfDeath = day;
+    this.dayOfDeath = this.environment.day;
     this.deathReason = reason;
 
     this.say('I see a light... Goodbye... my friends...');
@@ -225,9 +343,13 @@ export default class Animal {
 
     canvas.font = '300 10px/18px Arial';
     canvas.fillStyle = this.color;
-    canvas.fillText(`${this.name} (${this.gender})`, x + 2, y - 9);
+    canvas.fillText(`${this.fullName} (${this.gender})`, x + 2, y - 9);
   }
 }
+
+Animal.EMOTION_IN_LOVE = 'in love';
+Animal.EMOTION_NORMAL = 'normal';
+Animal.EMOTION_SCARED = 'scared';
 
 Animal.DEATH_REASON_ILLNESS = 'illness';
 Animal.DEATH_REASON_KILLING = 'killing';

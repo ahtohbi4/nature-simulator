@@ -1,4 +1,4 @@
-import NotificationManager from './NotificationManager';
+import NotificationsManager from './NotificationsManager';
 import Tiger from './Tiger';
 import calculateDistance from '../utils/calculateDistance';
 
@@ -45,7 +45,7 @@ export default class Planet {
       day: 0,
     };
 
-    this.notifications = new NotificationManager({
+    this.notifications = new NotificationsManager({
       container: notificationsContainer,
     }, {
       environment: this.environment,

@@ -2,7 +2,7 @@ import Notification from './Notification';
 
 const QUEUE_MAX_LENGTH = 10;
 
-export default class NotificationManager {
+export default class NotificationsManager {
   constructor(params, options) {
     const { container } = params;
 

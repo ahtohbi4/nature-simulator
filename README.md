@@ -1,6 +1,9 @@
-Nature simulator
-==
+# Nature simulator
+
+> A try to create a nature simulator with graphical output by Canvas.
 
 [Demo](https://codesandbox.io/s/github/ahtohbi4/nature-simulator)
 
-> Trying to create a kind of a simulator of the nature to get a more practice in ES6 classes.
+## Tags
+
+`Canvas`, `es6`.
